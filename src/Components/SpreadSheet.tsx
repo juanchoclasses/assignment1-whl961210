@@ -82,7 +82,11 @@ function SpreadSheet({ documentName }: SpreadSheetProps) {
    * the other buttons do require asynchronous processing and so the function is marked async
    */
   async function onCommandButtonClick(text: string): Promise<void> {
-
+    //when user not input user name, alert
+    if (userName == "") {
+      alert("Please input user name");
+      return;
+    }
 
     switch (text) {
       case ButtonNames.edit_toggle:
@@ -140,7 +144,11 @@ function SpreadSheet({ documentName }: SpreadSheetProps) {
    * If the edit status is false then it will ask the machine to update the current formula.
    */
   function onCellClick(event: React.MouseEvent<HTMLButtonElement>): void {
-
+    //when user not input user name, alert
+    if (userName == "") {
+      alert("Please input user name");
+      return;
+    }
     const cellLabel = event.currentTarget.getAttribute("cell-label");
     // calculate the current row and column of the clicked on cell
 
