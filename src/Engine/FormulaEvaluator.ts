@@ -18,51 +18,40 @@ export class FormulaEvaluator {
   }
 
   /**
-    * place holder for the evaluator.   I am not sure what the type of the formula is yet 
-    * I do know that there will be a list of tokens so i will return the length of the array
-    * 
-    * I also need to test the error display in the front end so i will set the error message to
-    * the error messages found In GlobalDefinitions.ts
-    * 
-    * according to this formula.
-    * 
-    7 tokens partial: "#ERR",
-    8 tokens divideByZero: "#DIV/0!",
-    9 tokens invalidCell: "#REF!",
-  10 tokens invalidFormula: "#ERR",
-  11 tokens invalidNumber: "#ERR",
-  12 tokens invalidOperator: "#ERR",
-  13 missingParentheses: "#ERR",
-  0 tokens emptyFormula: "#EMPTY!",
-    * 
-   */
-
-
+    * Evaluates a given formula.
+    * @param formula - The formula to evaluate, represented as an array of tokens.
+    */
 
   evaluate(formula: FormulaType) {
+    // Reset error flags and messages from previous evaluations
     this._errorOccured = false;
     this._errorMessage = "";
+    // Initialize stacks for values and operators
     const values: number[] = [];
     const operators: TokenType[] = [];
     const length = formula.length;
     let elementCounter = 0;
-    if(formula.length > 3 && this.isOperator(formula[length - 1]) == true && this.isOperator(formula[length - 2]) == false){
-      formula = formula.slice(0,length-1);
+    // Check for invalid trailing operator
+    if (formula.length > 3 && this.isOperator(formula[length - 1]) == true && this.isOperator(formula[length - 2]) == false) {
+      formula = formula.slice(0, length - 1);
       this._errorMessage = ErrorMessages.invalidFormula;
       this._errorOccured = true;
     }
+    // Check for missing expression inside parentheses
     if (formula.length === 2 && formula[0] === "(" && formula[1] === ")") {
       this._errorMessage = ErrorMessages.missingParentheses;
       this._errorOccured = true;
       this._result = 0;
       return;
     }
+    // Check for division by zero at the end of the formula
     if (Number(formula[length - 1]) == 0 && formula[length - 2] == "/") {
       this._errorMessage = ErrorMessages.divideByZero;
       this._errorOccured = true;
       this._result = Infinity;
       return;
     }
+    // Check for empty formula
     if (formula.length === 0) {
       this._errorMessage = ErrorMessages.emptyFormula;
       this._errorOccured = true;
@@ -80,11 +69,13 @@ export class FormulaEvaluator {
       this._result = 0;
       return;
     }
+    // Process each token in the formula
     for (let i = 0; i < formula.length; i++) {
       const token = formula[i];
-
+      // Push numbers onto the value stack
       if (this.isNumber(token)) {
         values.push(Number(token));
+        // Handle cell references by getting their values
       } else if (this.isCellReference(token)) {
         const [value, error] = this.getCellValue(token);
         if (error) {
@@ -93,13 +84,16 @@ export class FormulaEvaluator {
           return;
         }
         values.push(value);
+        // Handle opening parentheses by pushing onto operator stack
       } else if (token === "(") {
         operators.push(token);
+        // Handle closing parentheses by evaluating operators until matching opening parentheses
       } else if (token === ")") {
         while (operators.length && operators[operators.length - 1] !== "(") {
           this.evaluateOperator(values, operators);
         }
         operators.pop();  // remove "("
+        // Handle operators by evaluating higher precedence operators, then pushing onto operator stack
       } else if (this.isOperator(token)) {
         while (
           operators.length &&
@@ -108,7 +102,7 @@ export class FormulaEvaluator {
           this.evaluateOperator(values, operators);
         }
         operators.push(token);
-
+        // Handle invalid tokens
 
       } else {
         this._errorMessage = ErrorMessages.invalidFormula;
@@ -116,10 +110,11 @@ export class FormulaEvaluator {
         return;
       }
     }
-
+    // Evaluate remaining operators
     while (operators.length) {
       this.evaluateOperator(values, operators);
     }
+    // Check for invalid final state, set result if valid, set error otherwise
     if (values.length !== 1 || isNaN(values[0])) {
       this._errorMessage = this._errorMessage || ErrorMessages.invalidFormula;
       this._result = Number(formula[0]);
@@ -130,22 +125,31 @@ export class FormulaEvaluator {
       this._result = 0;
       this._errorOccured = true;
     } else {
-      this._result = values.pop()!;
+      this._result = values.pop()!;// Set result to final value
     }
 
   }
 
 
-
+  /**
+    * @returns The error message from the last evaluation, if any.
+    */
 
   public get error(): string {
     return this._errorMessage
   }
-
+  /**
+   * @returns The result of the last evaluation.
+   */
   public get result(): number {
     return this._result;
   }
-
+  /**
+     * Evaluates the top operator on the operators stack with the top two
+     * values on the values stack.
+     * @param values - The stack of values.
+     * @param operators - The stack of operators.
+     */
 
   private evaluateOperator(values: number[], operators: TokenType[]) {
     const operator = operators.pop();
@@ -182,6 +186,11 @@ export class FormulaEvaluator {
       this._errorOccured = true;
     }
   }
+  /**
+   * Determines the precedence level of a given operator.
+   * @param operator - The operator whose precedence level is to be determined.
+   * @returns The precedence level of the operator.
+   */
   private precedence(operator: TokenType): number {
     switch (operator) {
       case "+":
@@ -194,6 +203,11 @@ export class FormulaEvaluator {
         return 0;
     }
   }
+  /**
+   * Checks if a given token is an operator.
+   * @param token - The token to check.
+   * @returns true if the token is an operator, false otherwise.
+   */
   private isOperator(token: TokenType): boolean {
     return ["+", "-", "*", "/"].includes(token);
   }
